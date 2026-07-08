@@ -4,9 +4,11 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\PromotionController;
+use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\StockController;
 use App\Http\Controllers\StockMovementController;
+use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\TenantController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\UserController;
@@ -29,6 +31,14 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::apiResource('categories', CategoryController::class);
     Route::apiResource('products', ProductController::class);
+    Route::apiResource('suppliers', SupplierController::class);
+
+    // Pembelian: resource dasar (index/show/store) + endpoint aksi khusus
+    // untuk approve (nambah stok), cancel, dan generate PDF bukti pembelian.
+    Route::apiResource('purchases', PurchaseController::class)->except(['update', 'destroy']);
+    Route::post('/purchases/{purchase}/approve', [PurchaseController::class, 'approve']);
+    Route::post('/purchases/{purchase}/cancel', [PurchaseController::class, 'cancel']);
+    Route::get('/purchases/{purchase}/pdf', [PurchaseController::class, 'pdf']);
 
     // Stok: read-only + adjust manual (bukan apiResource, karena sengaja
     // tidak ada update() langsung — lihat catatan desain di StockController).
