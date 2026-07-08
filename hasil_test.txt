@@ -1,0 +1,244 @@
+array:10 [
+  0 => "GET sanctum/csrf-cookie"
+  1 => "POST api/register"
+  2 => "POST api/login"
+  3 => "POST api/logout"
+  4 => "GET api/me"
+  5 => "POST api/users"
+  6 => "GET up"
+  7 => "GET /"
+  8 => "GET storage/{path}"
+  9 => "PUT storage/{path}"
+] // tests\Feature\AuthenticationTest.php:307
+"APP_ENV = testing" // tests\Feature\AuthenticationTest.php:308
+"APP_URL = http:http://moboit-warung.test" // tests\Feature\AuthenticationTest.php:309
+"Status /up: 404" // tests\Feature\AuthenticationTest.php:316
+
+  [39;41;1m FAIL [39;49;22m[39m Tests\Feature\AuthenticationTest[39m
+  [31;1m⨯[39;22m[90m [39m[90mit berhasil registrasi tenant baru sekaligus owner-nya[39m[90m                                                                                   [39m [90m0.34s[39m  
+  [31;1m⨯[39;22m[90m [39m[90mit menolak registrasi dengan email yang sudah dipakai tenant lain[39m[90m                                                                        [39m [90m0.04s[39m  
+  [31;1m⨯[39;22m[90m [39m[90mit menolak registrasi tanpa email maupun phone[39m[90m                                                                                           [39m [90m0.02s[39m  
+  [31;1m⨯[39;22m[90m [39m[90mit berhasil login pakai email dan password yang benar[39m[90m                                                                                    [39m [90m0.02s[39m  
+  [31;1m⨯[39;22m[90m [39m[90mit berhasil login pakai nomor HP dan password yang benar[39m[90m                                                                                 [39m [90m0.02s[39m  
+  [31;1m⨯[39;22m[90m [39m[90mit menolak login dengan password salah[39m[90m                                                                                                   [39m [90m0.02s[39m  
+  [31;1m⨯[39;22m[90m [39m[90mit menolak login dengan email yang tidak terdaftar[39m[90m                                                                                       [39m [90m0.02s[39m  
+  [31;1m⨯[39;22m[90m [39m[90mit menolak login untuk user yang sudah dinonaktifkan[39m[90m                                                                                     [39m [90m0.02s[39m  
+  [31;1m⨯[39;22m[90m [39m[90mit tetap bisa login walau tenant sudah expired[39m[90m                                                                                           [39m [90m0.02s[39m  
+  [31;1m⨯[39;22m[90m [39m[90mit berhasil logout dan token menjadi tidak valid[39m[90m                                                                                         [39m [90m0.02s[39m  
+  [31;1m⨯[39;22m[90m [39m[90mit mengembalikan data user dan tenant yang sedang login[39m[90m                                                                                  [39m [90m0.02s[39m  
+  [31;1m⨯[39;22m[90m [39m[90mit owner berhasil membuat user kasir baru di tenant yang sama[39m[90m                                                                            [39m [90m0.02s[39m  
+  [31;1m⨯[39;22m[90m [39m[90mit kasir tidak boleh membuat user baru (bukan owner/admin)[39m[90m                                                                               [39m [90m0.02s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit debug: tampilkan semua route yang ter-load di aplikasi testing[39m[90m                                                                        [39m [90m0.02s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit debug: hit health check /up[39m[90m                                                                                                           [39m [90m0.02s[39m  
+  [31m─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mTests\Feature\AuthenticationTest[22m [90m>[39m it berhasil registrasi tenant baru sekaligus owner-nya                                                 
+[39;1m  Expected response status code [201] but received 404.
+Failed asserting that 404 is identical to 201.[39;22m
+
+  at [32mtests\Feature\AuthenticationTest.php[39m:[32m77[39m
+    [90m 73[0m[90m▕ [0m[35;1m        [0m[37m'password' [0m[35;1m=> [0m[37m'password123'[0m[35;1m,[0m
+    [90m 74[0m[90m▕ [0m[35;1m        [0m[37m'password_confirmation' [0m[35;1m=> [0m[37m'password123'[0m[35;1m,[0m
+    [90m 75[0m[90m▕ [0m[35;1m    ]);[0m
+    [90m 76[0m[90m▕ [0m
+[31;1m  ➜ [0m[3;1m 77[0m[90m▕ [0m[35;1m    [0m[39;1m$response[0m[35;1m->[0m[39;1massertCreated[0m[35;1m()[0m
+    [90m 78[0m[90m▕ [0m[35;1m        ->[0m[39;1massertJsonStructure[0m[35;1m([[0m[37m'message'[0m[35;1m, [0m[37m'tenant'[0m[35;1m, [0m[37m'user'[0m[35;1m, [0m[37m'token'[0m[35;1m]);[0m
+    [90m 79[0m[90m▕ [0m
+    [90m 80[0m[90m▕ [0m[35;1m    [0m[39;1mexpect[0m[35;1m([0m[39;1mUser[0m[35;1m::[0m[39;1mwithoutGlobalScope[0m[35;1m([0m[37m'tenant'[0m[35;1m)->[0m[39;1mwhere[0m[35;1m([0m[37m'email'[0m[35;1m, [0m[37m'siti@example.com'[0m[35;1m)->[0m[39;1mexists[0m[35;1m())[0m
+    [90m 81[0m[90m▕ [0m[35;1m        ->[0m[39;1mtoBeTrue[0m[35;1m();[0m
+
+  [31m─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mTests\Feature\AuthenticationTest[22m [90m>[39m it menolak registrasi dengan email yang sudah dipakai tenant lain                                      
+[39;1m  Expected response status code [422] but received 404.
+Failed asserting that 404 is identical to 422.[39;22m
+
+  at [32mtests\Feature\AuthenticationTest.php[39m:[32m104[39m
+    [90m100[0m[90m▕ [0m[35;1m    ]);[0m
+    [90m101[0m[90m▕ [0m
+    [90m102[0m[90m▕ [0m[35;1m    [0m[90;3m// Sesuai keputusan desain: email unik GLOBAL lintas tenant,[0m
+    [90m103[0m[90m▕ [0m[90;3m    // jadi ini WAJIB ditolak, bukan dibolehkan.[0m
+[31;1m  ➜ [0m[3;1m104[0m[90m▕ [0m[90;3m    [0m[39;1m$response[0m[35;1m->[0m[39;1massertUnprocessable[0m[35;1m()[0m
+    [90m105[0m[90m▕ [0m[35;1m        ->[0m[39;1massertJsonValidationErrors[0m[35;1m([[0m[37m'email'[0m[35;1m]);[0m
+    [90m106[0m[90m▕ [0m[35;1m});[0m
+    [90m107[0m[90m▕ [0m
+    [90m108[0m[90m▕ [0m[39;1mit[0m[35;1m([0m[37m'menolak registrasi tanpa email maupun phone'[0m[35;1m, function () {[0m
+
+  [31m─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mTests\Feature\AuthenticationTest[22m [90m>[39m it menolak registrasi tanpa email maupun phone                                                         
+[39;1m  Expected response status code [422] but received 404.
+Failed asserting that 404 is identical to 422.[39;22m
+
+  at [32mtests\Feature\AuthenticationTest.php[39m:[32m116[39m
+    [90m112[0m[90m▕ [0m[35;1m        [0m[37m'password' [0m[35;1m=> [0m[37m'password123'[0m[35;1m,[0m
+    [90m113[0m[90m▕ [0m[35;1m        [0m[37m'password_confirmation' [0m[35;1m=> [0m[37m'password123'[0m[35;1m,[0m
+    [90m114[0m[90m▕ [0m[35;1m    ]);[0m
+    [90m115[0m[90m▕ [0m
+[31;1m  ➜ [0m[3;1m116[0m[90m▕ [0m[35;1m    [0m[39;1m$response[0m[35;1m->[0m[39;1massertUnprocessable[0m[35;1m()[0m
+    [90m117[0m[90m▕ [0m[35;1m        ->[0m[39;1massertJsonValidationErrors[0m[35;1m([[0m[37m'email'[0m[35;1m]);[0m
+    [90m118[0m[90m▕ [0m[35;1m});[0m
+    [90m119[0m[90m▕ [0m
+    [90m120[0m[90m▕ [0m[90;3m// ============================================================[0m
+
+  [31m─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mTests\Feature\AuthenticationTest[22m [90m>[39m it berhasil login pakai email dan password yang benar                                                  
+[39;1m  Expected response status code [200] but received 404.
+Failed asserting that 404 is identical to 200.[39;22m
+
+  at [32mtests\Feature\AuthenticationTest.php[39m:[32m138[39m
+    [90m134[0m[90m▕ [0m[90;3m    // mengembalikan 0 baris karena global scope tenant menyuntikkan[0m
+    [90m135[0m[90m▕ [0m[90;3m    // whereRaw('1=0') saat belum ada auth context. Kalau bug ini[0m
+    [90m136[0m[90m▕ [0m[90;3m    // muncul lagi (mis. karena refactor tanpa sengaja menghapus[0m
+    [90m137[0m[90m▕ [0m[90;3m    // withoutGlobalScope), assertion di bawah ini akan gagal dengan 401.[0m
+[31;1m  ➜ [0m[3;1m138[0m[90m▕ [0m[90;3m    [0m[39;1m$response[0m[35;1m->[0m[39;1massertOk[0m[35;1m()[0m
+    [90m139[0m[90m▕ [0m[35;1m        ->[0m[39;1massertJsonStructure[0m[35;1m([[0m[37m'user'[0m[35;1m, [0m[37m'tenant'[0m[35;1m, [0m[37m'token'[0m[35;1m]);[0m
+    [90m140[0m[90m▕ [0m[35;1m});[0m
+    [90m141[0m[90m▕ [0m
+    [90m142[0m[90m▕ [0m[39;1mit[0m[35;1m([0m[37m'berhasil login pakai nomor HP dan password yang benar'[0m[35;1m, function () {[0m
+
+  [31m─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mTests\Feature\AuthenticationTest[22m [90m>[39m it berhasil login pakai nomor HP dan password yang benar                                               
+[39;1m  Expected response status code [200] but received 404.
+Failed asserting that 404 is identical to 200.[39;22m
+
+  at [32mtests\Feature\AuthenticationTest.php[39m:[32m150[39m
+    [90m146[0m[90m▕ [0m[35;1m        [0m[37m'login' [0m[35;1m=> [0m[37m'081300000002'[0m[35;1m,[0m
+    [90m147[0m[90m▕ [0m[35;1m        [0m[37m'password' [0m[35;1m=> [0m[37m'password123'[0m[35;1m,[0m
+    [90m148[0m[90m▕ [0m[35;1m    ]);[0m
+    [90m149[0m[90m▕ [0m
+[31;1m  ➜ [0m[3;1m150[0m[90m▕ [0m[35;1m    [0m[39;1m$response[0m[35;1m->[0m[39;1massertOk[0m[35;1m()[0m
+    [90m151[0m[90m▕ [0m[35;1m        ->[0m[39;1massertJsonStructure[0m[35;1m([[0m[37m'user'[0m[35;1m, [0m[37m'tenant'[0m[35;1m, [0m[37m'token'[0m[35;1m]);[0m
+    [90m152[0m[90m▕ [0m[35;1m});[0m
+    [90m153[0m[90m▕ [0m
+    [90m154[0m[90m▕ [0m[39;1mit[0m[35;1m([0m[37m'menolak login dengan password salah'[0m[35;1m, function () {[0m
+
+  [31m─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mTests\Feature\AuthenticationTest[22m [90m>[39m it menolak login dengan password salah                                                                 
+[39;1m  Expected response status code [401] but received 404.
+Failed asserting that 404 is identical to 401.[39;22m
+
+  at [32mtests\Feature\AuthenticationTest.php[39m:[32m162[39m
+    [90m158[0m[90m▕ [0m[35;1m        [0m[37m'login' [0m[35;1m=> [0m[37m'salahpass@example.com'[0m[35;1m,[0m
+    [90m159[0m[90m▕ [0m[35;1m        [0m[37m'password' [0m[35;1m=> [0m[37m'password-yang-salah'[0m[35;1m,[0m
+    [90m160[0m[90m▕ [0m[35;1m    ]);[0m
+    [90m161[0m[90m▕ [0m
+[31;1m  ➜ [0m[3;1m162[0m[90m▕ [0m[35;1m    [0m[39;1m$response[0m[35;1m->[0m[39;1massertUnauthorized[0m[35;1m()[0m
+    [90m163[0m[90m▕ [0m[35;1m        ->[0m[39;1massertJson[0m[35;1m([[0m[37m'message' [0m[35;1m=> [0m[37m'Email/nomor HP atau password salah.'[0m[35;1m]);[0m
+    [90m164[0m[90m▕ [0m[35;1m});[0m
+    [90m165[0m[90m▕ [0m
+    [90m166[0m[90m▕ [0m[39;1mit[0m[35;1m([0m[37m'menolak login dengan email yang tidak terdaftar'[0m[35;1m, function () {[0m
+
+  [31m─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mTests\Feature\AuthenticationTest[22m [90m>[39m it menolak login dengan email yang tidak terdaftar                                                     
+[39;1m  Expected response status code [401] but received 404.
+Failed asserting that 404 is identical to 401.[39;22m
+
+  at [32mtests\Feature\AuthenticationTest.php[39m:[32m172[39m
+    [90m168[0m[90m▕ [0m[35;1m        [0m[37m'login' [0m[35;1m=> [0m[37m'tidak-ada@example.com'[0m[35;1m,[0m
+    [90m169[0m[90m▕ [0m[35;1m        [0m[37m'password' [0m[35;1m=> [0m[37m'apasaja123'[0m[35;1m,[0m
+    [90m170[0m[90m▕ [0m[35;1m    ]);[0m
+    [90m171[0m[90m▕ [0m
+[31;1m  ➜ [0m[3;1m172[0m[90m▕ [0m[35;1m    [0m[39;1m$response[0m[35;1m->[0m[39;1massertUnauthorized[0m[35;1m();[0m
+    [90m173[0m[90m▕ [0m[35;1m});[0m
+    [90m174[0m[90m▕ [0m
+    [90m175[0m[90m▕ [0m[39;1mit[0m[35;1m([0m[37m'menolak login untuk user yang sudah dinonaktifkan'[0m[35;1m, function () {[0m
+    [90m176[0m[90m▕ [0m[35;1m    [0m[39;1mbuatTenantDenganOwner[0m[35;1m([[0m
+
+  [31m─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mTests\Feature\AuthenticationTest[22m [90m>[39m it menolak login untuk user yang sudah dinonaktifkan                                                   
+[39;1m  Expected response status code [403] but received 404.
+Failed asserting that 404 is identical to 403.[39;22m
+
+  at [32mtests\Feature\AuthenticationTest.php[39m:[32m187[39m
+    [90m183[0m[90m▕ [0m[35;1m        [0m[37m'login' [0m[35;1m=> [0m[37m'nonaktif@example.com'[0m[35;1m,[0m
+    [90m184[0m[90m▕ [0m[35;1m        [0m[37m'password' [0m[35;1m=> [0m[37m'password123'[0m[35;1m,[0m
+    [90m185[0m[90m▕ [0m[35;1m    ]);[0m
+    [90m186[0m[90m▕ [0m
+[31;1m  ➜ [0m[3;1m187[0m[90m▕ [0m[35;1m    [0m[39;1m$response[0m[35;1m->[0m[39;1massertForbidden[0m[35;1m()[0m
+    [90m188[0m[90m▕ [0m[35;1m        ->[0m[39;1massertJson[0m[35;1m([[0m[37m'message' [0m[35;1m=> [0m[37m'Akun kamu sudah dinonaktifkan. Hubungi owner/admin toko.'[0m[35;1m]);[0m
+    [90m189[0m[90m▕ [0m[35;1m});[0m
+    [90m190[0m[90m▕ [0m
+    [90m191[0m[90m▕ [0m[39;1mit[0m[35;1m([0m[37m'tetap bisa login walau tenant sudah expired'[0m[35;1m, function () {[0m
+
+  [31m─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mTests\Feature\AuthenticationTest[22m [90m>[39m it tetap bisa login walau tenant sudah expired                                                         
+[39;1m  Expected response status code [200] but received 404.
+Failed asserting that 404 is identical to 200.[39;22m
+
+  at [32mtests\Feature\AuthenticationTest.php[39m:[32m204[39m
+    [90m200[0m[90m▕ [0m[35;1m        [0m[37m'login' [0m[35;1m=> [0m[37m'expired@example.com'[0m[35;1m,[0m
+    [90m201[0m[90m▕ [0m[35;1m        [0m[37m'password' [0m[35;1m=> [0m[37m'password123'[0m[35;1m,[0m
+    [90m202[0m[90m▕ [0m[35;1m    ]);[0m
+    [90m203[0m[90m▕ [0m
+[31;1m  ➜ [0m[3;1m204[0m[90m▕ [0m[35;1m    [0m[39;1m$response[0m[35;1m->[0m[39;1massertOk[0m[35;1m();[0m
+    [90m205[0m[90m▕ [0m[35;1m});[0m
+    [90m206[0m[90m▕ [0m
+    [90m207[0m[90m▕ [0m[90;3m// ============================================================[0m
+    [90m208[0m[90m▕ [0m[90;3m// LOGOUT[0m
+
+  [31m─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mTests\Feature\AuthenticationTest[22m [90m>[39m it berhasil logout dan token menjadi tidak valid                                                       
+[39;1m  Expected response status code [200] but received 404.
+Failed asserting that 404 is identical to 200.[39;22m
+
+  at [32mtests\Feature\AuthenticationTest.php[39m:[32m218[39m
+    [90m214[0m[90m▕ [0m
+    [90m215[0m[90m▕ [0m[35;1m    [0m[39;1m$response [0m[35;1m= [0m[39;1m$this[0m[35;1m->[0m[39;1mwithHeader[0m[35;1m([0m[37m'Authorization'[0m[35;1m, [0m[37m"Bearer [0m[35;1m{[0m[39;1m$token[0m[35;1m}[0m[37m"[0m[35;1m)[0m
+    [90m216[0m[90m▕ [0m[35;1m        ->[0m[39;1mpostJson[0m[35;1m([0m[39;1mLOGOUT_URL[0m[35;1m);[0m
+    [90m217[0m[90m▕ [0m
+[31;1m  ➜ [0m[3;1m218[0m[90m▕ [0m[35;1m    [0m[39;1m$response[0m[35;1m->[0m[39;1massertOk[0m[35;1m();[0m
+    [90m219[0m[90m▕ [0m
+    [90m220[0m[90m▕ [0m[35;1m    [0m[90;3m// Token yang sama tidak boleh bisa dipakai lagi setelah logout.[0m
+    [90m221[0m[90m▕ [0m[90;3m    [0m[39;1m$this[0m[35;1m->[0m[39;1mwithHeader[0m[35;1m([0m[37m'Authorization'[0m[35;1m, [0m[37m"Bearer [0m[35;1m{[0m[39;1m$token[0m[35;1m}[0m[37m"[0m[35;1m)[0m
+    [90m222[0m[90m▕ [0m[35;1m        ->[0m[39;1mgetJson[0m[35;1m([0m[39;1mME_URL[0m[35;1m)[0m
+
+  [31m─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mTests\Feature\AuthenticationTest[22m [90m>[39m it mengembalikan data user dan tenant yang sedang login                                                
+[39;1m  Expected response status code [200] but received 404.
+Failed asserting that 404 is identical to 200.[39;22m
+
+  at [32mtests\Feature\AuthenticationTest.php[39m:[32m237[39m
+    [90m233[0m[90m▕ [0m
+    [90m234[0m[90m▕ [0m[35;1m    [0m[39;1m$response [0m[35;1m= [0m[39;1m$this[0m[35;1m->[0m[39;1mwithHeader[0m[35;1m([0m[37m'Authorization'[0m[35;1m, [0m[37m"Bearer [0m[35;1m{[0m[39;1m$token[0m[35;1m}[0m[37m"[0m[35;1m)[0m
+    [90m235[0m[90m▕ [0m[35;1m        ->[0m[39;1mgetJson[0m[35;1m([0m[39;1mME_URL[0m[35;1m);[0m
+    [90m236[0m[90m▕ [0m
+[31;1m  ➜ [0m[3;1m237[0m[90m▕ [0m[35;1m    [0m[39;1m$response[0m[35;1m->[0m[39;1massertOk[0m[35;1m()[0m
+    [90m238[0m[90m▕ [0m[35;1m        ->[0m[39;1massertJsonPath[0m[35;1m([0m[37m'user.email'[0m[35;1m, [0m[37m'me@example.com'[0m[35;1m)[0m
+    [90m239[0m[90m▕ [0m[35;1m        ->[0m[39;1massertJsonPath[0m[35;1m([0m[37m'tenant.id'[0m[35;1m, [0m[39;1m$tenant[0m[35;1m->[0m[39;1mid[0m[35;1m);[0m
+    [90m240[0m[90m▕ [0m[35;1m});[0m
+    [90m241[0m[90m▕ [0m
+
+  [31m─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mTests\Feature\AuthenticationTest[22m [90m>[39m it owner berhasil membuat user kasir baru di tenant yang sama                                          
+[39;1m  Expected response status code [201] but received 404.
+Failed asserting that 404 is identical to 201.[39;22m
+
+  at [32mtests\Feature\AuthenticationTest.php[39m:[32m260[39m
+    [90m256[0m[90m▕ [0m[35;1m            [0m[37m'password_confirmation' [0m[35;1m=> [0m[37m'password123'[0m[35;1m,[0m
+    [90m257[0m[90m▕ [0m[35;1m            [0m[37m'role' [0m[35;1m=> [0m[37m'kasir'[0m[35;1m,[0m
+    [90m258[0m[90m▕ [0m[35;1m        ]);[0m
+    [90m259[0m[90m▕ [0m
+[31;1m  ➜ [0m[3;1m260[0m[90m▕ [0m[35;1m    [0m[39;1m$response[0m[35;1m->[0m[39;1massertCreated[0m[35;1m();[0m
+    [90m261[0m[90m▕ [0m
+    [90m262[0m[90m▕ [0m[35;1m    [0m[39;1m$kasir [0m[35;1m= [0m[39;1mUser[0m[35;1m::[0m[39;1mwithoutGlobalScope[0m[35;1m([0m[37m'tenant'[0m[35;1m)->[0m[39;1mwhere[0m[35;1m([0m[37m'email'[0m[35;1m, [0m[37m'kasir1@example.com'[0m[35;1m)->[0m[39;1mfirst[0m[35;1m();[0m
+    [90m263[0m[90m▕ [0m[35;1m    [0m[39;1mexpect[0m[35;1m([0m[39;1m$kasir[0m[35;1m)->[0m[39;1mnot[0m[35;1m->[0m[39;1mtoBeNull[0m[35;1m();[0m
+    [90m264[0m[90m▕ [0m[35;1m    [0m[39;1mexpect[0m[35;1m([0m[39;1m$kasir[0m[35;1m->[0m[39;1mtenant_id[0m[35;1m)->[0m[39;1mtoBe[0m[35;1m([0m[39;1m$tenant[0m[35;1m->[0m[39;1mid[0m[35;1m);[0m
+
+  [31m─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mTests\Feature\AuthenticationTest[22m [90m>[39m it kasir tidak boleh membuat user baru (bukan owner/admin)                                             
+[39;1m  Expected response status code [403] but received 404.
+Failed asserting that 404 is identical to 403.[39;22m
+
+  at [32mtests\Feature\AuthenticationTest.php[39m:[32m294[39m
+    [90m290[0m[90m▕ [0m
+    [90m291[0m[90m▕ [0m[35;1m    [0m[90;3m// Otorisasi ini seharusnya dicek di dalam CreateUserRequest::authorize().[0m
+    [90m292[0m[90m▕ [0m[90;3m    // Kalau assertion ini gagal, berarti CreateUserRequest belum[0m
+    [90m293[0m[90m▕ [0m[90;3m    // benar-benar membatasi berdasarkan canManageUsers().[0m
+[31;1m  ➜ [0m[3;1m294[0m[90m▕ [0m[90;3m    [0m[39;1m$response[0m[35;1m->[0m[39;1massertForbidden[0m[35;1m();[0m
+    [90m295[0m[90m▕ [0m[35;1m});[0m
+    [90m296[0m[90m▕ [0m
+    [90m297[0m[90m▕ [0m[90;3m// ============================================================[0m
+    [90m298[0m[90m▕ [0m[90;3m// DIAGNOSTIK SEMENTARA - hapus setelah masalah 404 selesai[0m
+
+
+  [90mTests:[39m    [31;1m13 failed[39;22m[90m,[39m[39m [39m[32;1m2 passed[39;22m[90m (15 assertions)[39m
+  [90mDuration:[39m [39m0.77s[39m
+
