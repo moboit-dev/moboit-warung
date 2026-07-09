@@ -8,42 +8,36 @@ use App\Models\StockMovement;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
 
 /**
  * CATATAN DESAIN:
- * Sengaja TIDAK ada endpoint `update()` biasa di sini. Berdasarkan komentar
- * di StockMovement, setiap perubahan quantity harus tercatat sebagai
- * movement (in/out/adjustment/break_unit) untuk keperluan audit & laporan.
- * Kalau Stock::update() langsung dipanggil dari controller, historinya
- * hilang dan totalDalamSatuanKecil() jadi tidak bisa direkonsiliasi.
+ * Sengaja TIDAK ada endpoint `update()` biasa di sini. Setiap perubahan
+ * quantity harus tercatat sebagai StockMovement (in/out/adjustment) untuk
+ * keperluan audit & laporan. Endpoint di sini hanya READ (index/show) +
+ * `adjust` (koreksi stok manual, mis. stok opname).
  *
- * Endpoint di sini hanya READ (index/show) + `adjust` (koreksi stok manual,
- * mis. stok opname). Alur jual/beli/auto-break unit besar->kecil
- * (StockService::sellKecilDenganAutoBreak yang disebut di komentar
- * StockMovement) BELUM dibuat di sini — itu logic bisnis terpisah yang
- * lebih baik dibuatkan service class sendiri, bukan langsung di controller.
+ * Multi-unit (satuan besar/kecil) sudah dihapus - stok kini cuma
+ * satu kolom `quantity` per produk.
  */
 class StockController extends Controller
 {
     /**
      * GET /api/stocks
-     * List stok semua produk milik tenant yang login.
-     * ?low_stock=1 untuk filter produk yang stoknya di bawah threshold
-     * (pakai qty_kecil karena itu satuan dasar untuk multi-unit).
+     * ?search= nama/sku produk
+     * ?low_stock_threshold= filter produk yang stoknya <= threshold
      */
     public function index(Request $request): JsonResponse
     {
         $stocks = Stock::query()
-            ->with('product:id,name,sku,unit_besar,unit_kecil,conversion_qty')
+            ->with('product:id,name,sku,unit')
             ->whereHas('product', function ($query) use ($request) {
                 if ($request->filled('search')) {
-                    $query->where('name', 'like', '%' . $request->input('search') . '%')
-                        ->orWhere('sku', 'like', '%' . $request->input('search') . '%');
+                    $query->where('name', 'like', '%'.$request->input('search').'%')
+                        ->orWhere('sku', 'like', '%'.$request->input('search').'%');
                 }
             })
             ->when($request->filled('low_stock_threshold'), function ($query) use ($request) {
-                $query->where('qty_kecil', '<=', $request->integer('low_stock_threshold'));
+                $query->where('quantity', '<=', $request->integer('low_stock_threshold'));
             })
             ->paginate($request->integer('per_page', 20));
 
@@ -71,9 +65,8 @@ class StockController extends Controller
 
         return response()->json([
             'data' => [
-                'product' => $product->only('id', 'name', 'sku', 'unit_besar', 'unit_kecil', 'conversion_qty'),
+                'product' => $product->only('id', 'name', 'sku', 'unit'),
                 'stock' => $stock,
-                'total_dalam_satuan_kecil' => $stock->totalDalamSatuanKecil(),
                 'recent_movements' => $recentMovements,
             ],
         ]);
@@ -81,7 +74,7 @@ class StockController extends Controller
 
     /**
      * POST /api/stocks/{product}/adjust
-     * Body: { unit: 'besar'|'kecil', quantity: int (boleh negatif untuk koreksi turun), note?: string }
+     * Body: { quantity: int (boleh negatif untuk koreksi turun), note?: string }
      *
      * Dipakai untuk stok opname / koreksi manual. Selalu tercatat sebagai
      * StockMovement type=adjustment supaya kelihatan di histori siapa
@@ -90,7 +83,6 @@ class StockController extends Controller
     public function adjust(Request $request, Product $product): JsonResponse
     {
         $validated = $request->validate([
-            'unit' => ['required', Rule::in([StockMovement::UNIT_BESAR, StockMovement::UNIT_KECIL])],
             'quantity' => 'required|integer|not_in:0',
             'note' => 'nullable|string|max:255',
         ]);
@@ -101,38 +93,34 @@ class StockController extends Controller
             ], 422);
         }
 
-        if ($validated['unit'] === StockMovement::UNIT_BESAR && ! $product->hasMultiUnit()) {
-            return response()->json([
-                'message' => 'Produk ini bukan produk multi-unit, tidak punya satuan besar.',
-            ], 422);
+        try {
+            $stock = DB::transaction(function () use ($request, $product, $validated) {
+                $stock = Stock::firstOrCreate(
+                    ['product_id' => $product->id],
+                    ['quantity' => 0]
+                );
+
+                $stock->quantity += $validated['quantity'];
+
+                if ($stock->quantity < 0) {
+                    throw new \RuntimeException('Stok tidak boleh minus.');
+                }
+
+                $stock->save();
+
+                StockMovement::create([
+                    'product_id' => $product->id,
+                    'type' => StockMovement::TYPE_ADJUSTMENT,
+                    'quantity' => $validated['quantity'],
+                    'note' => $validated['note'] ?? 'Koreksi stok manual',
+                    'created_by' => $request->user()->id,
+                ]);
+
+                return $stock;
+            });
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
         }
-
-        $stock = DB::transaction(function () use ($request, $product, $validated) {
-            $stock = Stock::firstOrCreate(
-                ['product_id' => $product->id],
-                ['quantity' => 0, 'qty_besar' => 0, 'qty_kecil' => 0]
-            );
-
-            $column = $validated['unit'] === StockMovement::UNIT_BESAR ? 'qty_besar' : 'qty_kecil';
-            $stock->{$column} += $validated['quantity'];
-
-            if ($stock->{$column} < 0) {
-                throw new \RuntimeException("Stok {$validated['unit']} tidak boleh minus.");
-            }
-
-            $stock->save();
-
-            StockMovement::create([
-                'product_id' => $product->id,
-                'type' => StockMovement::TYPE_ADJUSTMENT,
-                'unit' => $validated['unit'],
-                'quantity' => $validated['quantity'],
-                'note' => $validated['note'] ?? 'Koreksi stok manual',
-                'created_by' => $request->user()->id,
-            ]);
-
-            return $stock;
-        });
 
         return response()->json(['data' => $stock]);
     }

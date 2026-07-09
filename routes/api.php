@@ -5,6 +5,7 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\PromotionController;
 use App\Http\Controllers\PurchaseController;
+use App\Http\Controllers\PurchaseReturnController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\StockController;
 use App\Http\Controllers\StockMovementController;
@@ -33,12 +34,18 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('products', ProductController::class);
     Route::apiResource('suppliers', SupplierController::class);
 
-    // Pembelian: resource dasar (index/show/store) + endpoint aksi khusus
-    // untuk approve (nambah stok), cancel, dan generate PDF bukti pembelian.
-    Route::apiResource('purchases', PurchaseController::class)->except(['update', 'destroy']);
+    // Pembelian: resource dasar (index/show/store/update) + endpoint aksi
+    // khusus untuk approve (nambah stok), cancel, retur, dan PDF bukti.
+    // destroy sengaja tidak diizinkan - pembelian yang salah dibatalkan
+    // lewat cancel(), bukan dihapus permanen.
+    Route::apiResource('purchases', PurchaseController::class)->except(['destroy']);
     Route::post('/purchases/{purchase}/approve', [PurchaseController::class, 'approve']);
     Route::post('/purchases/{purchase}/cancel', [PurchaseController::class, 'cancel']);
     Route::get('/purchases/{purchase}/pdf', [PurchaseController::class, 'pdf']);
+
+    // Retur pembelian - hanya untuk pembelian yang sudah approved.
+    Route::get('/purchases/{purchase}/returns', [PurchaseReturnController::class, 'index']);
+    Route::post('/purchases/{purchase}/returns', [PurchaseReturnController::class, 'store']);
 
     // Stok: read-only + adjust manual (bukan apiResource, karena sengaja
     // tidak ada update() langsung — lihat catatan desain di StockController).

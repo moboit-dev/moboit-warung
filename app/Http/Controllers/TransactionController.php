@@ -23,7 +23,7 @@ class TransactionController extends Controller
 
     /**
      * POST /api/transactions
-     * Body: { payment_method, paid?, items: [{ product_id, unit, quantity, price }] }
+     * Body: { payment_method, paid?, items: [{ product_id, quantity, price }] }
      *
      * ASUMSI: UI kasir (pos_screen.dart) belum punya input "uang diterima",
      * jadi kalau `paid` tidak dikirim, dianggap PAS (paid = total, change = 0).
@@ -49,8 +49,11 @@ class TransactionController extends Controller
      * tabel `products` supaya promo per-kategori bisa dievaluasi dengan
      * benar. Kalau kamu mau harga juga tidak dipercaya dari client sama
      * sekali, ganti baris `price: (float) $item['price']` di
-     * `buildCartItems()` jadi mengambil harga dari `$product->price` /
-     * `$product->price_besar` sesuai unit.
+     * `buildCartItems()` jadi mengambil harga dari `$product->price`.
+     *
+     * CATATAN: request `items.*.unit` dan cabang unit besar/kecil di
+     * `reduceStock()` sudah dihapus — mengikuti StockMovement yang sudah
+     * disederhanakan jadi single-unit (lihat komentar di model tersebut).
      */
     public function store(Request $request): JsonResponse
     {
@@ -59,7 +62,6 @@ class TransactionController extends Controller
             'paid' => 'nullable|numeric|min:0',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|integer|exists:products,id',
-            'items.*.unit' => ['required', Rule::in([StockMovement::UNIT_BESAR, StockMovement::UNIT_KECIL])],
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.price' => 'required|numeric|min:0',
         ]);
@@ -131,7 +133,7 @@ class TransactionController extends Controller
                     ]);
 
                     if ($product->track_stock) {
-                        $this->reduceStock($product, $item['unit'], $item['quantity'], $transaction, $request);
+                        $this->reduceStock($product, $item['quantity'], $transaction, $request);
                     }
                 }
 
@@ -164,12 +166,8 @@ class TransactionController extends Controller
                         'is_bonus_item' => true,
                     ]);
 
-                    // ASUMSI: unit bonus item selalu "kecil" karena
-                    // PromotionService/reward promo tidak membawa info unit
-                    // besar/kecil. Sesuaikan kalau reward promo kamu bisa
-                    // menentukan unit tertentu.
                     if ($bonusProduct->track_stock) {
-                        $this->reduceStock($bonusProduct, StockMovement::UNIT_KECIL, $bonus->quantity, $transaction, $request);
+                        $this->reduceStock($bonusProduct, $bonus->quantity, $transaction, $request);
                     }
                 }
 
@@ -191,7 +189,7 @@ class TransactionController extends Controller
      * products (bukan dari body — client tidak mengirim category_id sama
      * sekali) supaya promo per-kategori bisa dievaluasi dengan benar.
      *
-     * @param  array<int, array{product_id:int, unit:string, quantity:int, price:float}>  $items
+     * @param  array<int, array{product_id:int, quantity:int, price:float}>  $items
      * @param  \Illuminate\Support\Collection<int, Product>  $productsById
      * @return CartItem[]
      */
@@ -210,107 +208,35 @@ class TransactionController extends Controller
     }
 
     /**
-     * Kurangi stok untuk satu item transaksi. Kalau jual satuan "kecil" dan
-     * stok kecil tidak cukup, otomatis "bongkar" 1+ unit besar jadi kecil
-     * (tercatat sebagai 2 StockMovement type=break_unit terpisah), PERSIS
-     * seperti yang dijelaskan di komentar StockMovement::TYPE_BREAK_UNIT.
+     * Kurangi stok untuk satu item transaksi.
      *
-     * Melempar RuntimeException kalau stok benar-benar tidak cukup —
-     * ini akan me-rollback seluruh transaksi (item lain yang sudah
-     * diproses ikut batal, DB::transaction yang menangani).
+     * Disederhanakan: produk sekarang selalu single-unit (lihat catatan di
+     * StockMovement), jadi tidak ada lagi cabang unit besar/kecil ataupun
+     * auto-"bongkar" box -> sachet. Cukup satu kolom quantity di Stock.
+     *
+     * Melempar RuntimeException kalau stok tidak cukup — ini akan
+     * me-rollback seluruh transaksi (item lain yang sudah diproses ikut
+     * batal, DB::transaction yang menangani).
      */
-    protected function reduceStock(Product $product, string $unit, int $quantity, Transaction $transaction, Request $request): void
+    protected function reduceStock(Product $product, int $quantity, Transaction $transaction, Request $request): void
     {
         $stock = Stock::firstOrCreate(
             ['product_id' => $product->id],
-            ['quantity' => 0, 'qty_besar' => 0, 'qty_kecil' => 0]
+            ['quantity' => 0]
         );
 
-        if ($unit === StockMovement::UNIT_BESAR) {
-            if ($stock->qty_besar < $quantity) {
-                throw new \RuntimeException("Stok {$product->unit_besar} untuk {$product->name} tidak cukup.");
-            }
-
-            $stock->qty_besar -= $quantity;
-            $stock->save();
-
-            StockMovement::create([
-                'product_id' => $product->id,
-                'type' => StockMovement::TYPE_OUT,
-                'unit' => StockMovement::UNIT_BESAR,
-                'quantity' => -$quantity,
-                'note' => 'Penjualan',
-                'reference_id' => $transaction->id,
-                'created_by' => $request->user()->id,
-            ]);
-
-            return;
+        if ($stock->quantity < $quantity) {
+            throw new \RuntimeException("Stok {$product->name} tidak cukup.");
         }
 
-        // Unit kecil: cukup dari stok kecil langsung?
-        if ($stock->qty_kecil >= $quantity) {
-            $stock->qty_kecil -= $quantity;
-            $stock->save();
-
-            StockMovement::create([
-                'product_id' => $product->id,
-                'type' => StockMovement::TYPE_OUT,
-                'unit' => StockMovement::UNIT_KECIL,
-                'quantity' => -$quantity,
-                'note' => 'Penjualan',
-                'reference_id' => $transaction->id,
-                'created_by' => $request->user()->id,
-            ]);
-
-            return;
-        }
-
-        // Stok kecil kurang -> coba auto-break dari unit besar (kalau produk multi-unit).
-        if (! $product->hasMultiUnit()) {
-            throw new \RuntimeException("Stok {$product->unit_kecil} untuk {$product->name} tidak cukup.");
-        }
-
-        $shortage = $quantity - $stock->qty_kecil;
-        $boxesNeeded = (int) ceil($shortage / $product->conversion_qty);
-
-        if ($stock->qty_besar < $boxesNeeded) {
-            throw new \RuntimeException("Stok {$product->name} tidak cukup (termasuk setelah dibongkar dari {$product->unit_besar}).");
-        }
-
-        $stock->qty_besar -= $boxesNeeded;
-        $stock->qty_kecil += $boxesNeeded * $product->conversion_qty;
-        $stock->save();
-
-        StockMovement::create([
-            'product_id' => $product->id,
-            'type' => StockMovement::TYPE_BREAK_UNIT,
-            'unit' => StockMovement::UNIT_BESAR,
-            'quantity' => -$boxesNeeded,
-            'note' => "Bongkar {$boxesNeeded} {$product->unit_besar} jadi {$product->unit_kecil}",
-            'reference_id' => $transaction->id,
-            'created_by' => $request->user()->id,
-        ]);
-
-        StockMovement::create([
-            'product_id' => $product->id,
-            'type' => StockMovement::TYPE_BREAK_UNIT,
-            'unit' => StockMovement::UNIT_KECIL,
-            'quantity' => $boxesNeeded * $product->conversion_qty,
-            'note' => "Hasil bongkar {$boxesNeeded} {$product->unit_besar}",
-            'reference_id' => $transaction->id,
-            'created_by' => $request->user()->id,
-        ]);
-
-        // Sekarang stok kecil sudah cukup, kurangi sejumlah yang terjual.
-        $stock->qty_kecil -= $quantity;
+        $stock->quantity -= $quantity;
         $stock->save();
 
         StockMovement::create([
             'product_id' => $product->id,
             'type' => StockMovement::TYPE_OUT,
-            'unit' => StockMovement::UNIT_KECIL,
             'quantity' => -$quantity,
-            'note' => 'Penjualan (setelah auto-break)',
+            'note' => 'Penjualan',
             'reference_id' => $transaction->id,
             'created_by' => $request->user()->id,
         ]);

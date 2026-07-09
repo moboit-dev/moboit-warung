@@ -5,16 +5,26 @@ namespace App\Http\Controllers;
 use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\Stock;
+use App\Models\StockMovement;
 use App\Models\SupplierDebt;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class PurchaseController extends Controller
 {
     /**
      * GET /api/purchases
+     *
+     * Filter yang didukung:
+     * - status
+     * - supplier_id
+     * - tanggal_mulai / tanggal_akhir (rentang tanggal)
+     * - tanggal (tanggal persis)
+     * - no_pembelian (cocok sebagian, mis. cari "0002")
+     * - search (bebas: cocok di no_pembelian ATAU nama item yang dibeli)
      */
     public function index(Request $request): JsonResponse
     {
@@ -24,6 +34,20 @@ class PurchaseController extends Controller
             ->when($request->filled('supplier_id'), fn ($q) => $q->where('supplier_id', $request->input('supplier_id')))
             ->when($request->filled('tanggal_mulai'), fn ($q) => $q->whereDate('tanggal_pembelian', '>=', $request->input('tanggal_mulai')))
             ->when($request->filled('tanggal_akhir'), fn ($q) => $q->whereDate('tanggal_pembelian', '<=', $request->input('tanggal_akhir')))
+            ->when($request->filled('tanggal'), fn ($q) => $q->whereDate('tanggal_pembelian', $request->input('tanggal')))
+            ->when($request->filled('no_pembelian'), fn ($q) => $q->where('no_pembelian', 'like', '%'.$request->input('no_pembelian').'%'))
+            ->when($request->filled('search'), function ($q) use ($request) {
+                $search = $request->input('search');
+                $q->where(function ($sub) use ($search) {
+                    $sub->where('no_pembelian', 'like', '%'.$search.'%')
+                        ->orWhereHas('items.product', function ($iq) use ($search) {
+                            $iq->where('name', 'like', '%'.$search.'%');
+                        })
+                        ->orWhereHas('supplier', function ($sq) use ($search) {
+                            $sq->where('nama', 'like', '%'.$search.'%');
+                        });
+                });
+            })
             ->orderByDesc('tanggal_pembelian')
             ->paginate($request->integer('per_page', 20));
 
@@ -33,23 +57,11 @@ class PurchaseController extends Controller
     /**
      * POST /api/purchases
      * Simpan sebagai draft. Stok BELUM bertambah di sini - baru bertambah
-     * saat approve() dipanggil (lihat catatan di method approve()).
+     * saat approve() dipanggil.
      */
     public function store(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'tanggal_pembelian' => 'required|date',
-            'supplier_id' => ['required', Rule::exists('suppliers', 'id')],
-            'jenis_pembayaran' => 'required|in:cash,transfer,kredit',
-            'jatuh_tempo' => 'nullable|date|required_if:jenis_pembayaran,kredit',
-            'catatan' => 'nullable|string',
-            'bukti_file' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
-            'items' => 'required|array|min:1',
-            'items.*.product_id' => ['required', Rule::exists('products', 'id')],
-            'items.*.satuan_dibeli' => 'required|in:besar,kecil',
-            'items.*.qty' => 'required|integer|min:1',
-            'items.*.harga_satuan' => 'required|numeric|min:0',
-        ]);
+        $validated = $this->validatePurchaseData($request);
 
         $purchase = DB::transaction(function () use ($validated, $request) {
             $total = collect($validated['items'])->sum(fn ($item) => $item['qty'] * $item['harga_satuan']);
@@ -73,13 +85,9 @@ class PurchaseController extends Controller
             ]);
 
             foreach ($validated['items'] as $item) {
-                $product = Product::findOrFail($item['product_id']);
-
                 $purchase->items()->create([
                     'product_id' => $item['product_id'],
-                    'satuan_dibeli' => $item['satuan_dibeli'],
                     'qty' => $item['qty'],
-                    'conversion_qty_snapshot' => $product->conversion_qty,
                     'harga_satuan' => $item['harga_satuan'],
                     'subtotal' => $item['qty'] * $item['harga_satuan'],
                 ]);
@@ -98,6 +106,63 @@ class PurchaseController extends Controller
      */
     public function show(Purchase $purchase): JsonResponse
     {
+        $purchase->load(['supplier', 'items.product', 'returns.items.product']);
+
+        return response()->json(['data' => $purchase]);
+    }
+
+    /**
+     * PUT /api/purchases/{purchase}
+     * Edit pembelian - HANYA boleh selama status masih 'draft'. Begitu
+     * approved, stok sudah terlanjur bertambah & mungkin sudah ada hutang
+     * supplier terkait, jadi edit langsung tidak aman lagi (dan sengaja
+     * tidak diizinkan; kalau ada kesalahan setelah approve, alurnya lewat
+     * fitur retur, bukan edit).
+     */
+    public function update(Request $request, Purchase $purchase): JsonResponse
+    {
+        if ($purchase->status !== 'draft') {
+            return response()->json([
+                'message' => 'Hanya pembelian berstatus draft yang bisa diedit.',
+            ], 422);
+        }
+
+        $validated = $this->validatePurchaseData($request);
+
+        DB::transaction(function () use ($validated, $request, $purchase) {
+            $total = collect($validated['items'])->sum(fn ($item) => $item['qty'] * $item['harga_satuan']);
+
+            $buktiPath = $purchase->bukti_file;
+            if ($request->hasFile('bukti_file')) {
+                if ($buktiPath) {
+                    Storage::disk('public')->delete($buktiPath);
+                }
+                $buktiPath = $request->file('bukti_file')->store('bukti-pembelian', 'public');
+            }
+
+            $purchase->update([
+                'tanggal_pembelian' => $validated['tanggal_pembelian'],
+                'supplier_id' => $validated['supplier_id'],
+                'jenis_pembayaran' => $validated['jenis_pembayaran'],
+                'jatuh_tempo' => $validated['jatuh_tempo'] ?? null,
+                'total' => $total,
+                'bukti_file' => $buktiPath,
+                'catatan' => $validated['catatan'] ?? null,
+            ]);
+
+            // Ganti seluruh item lama dengan item baru (lebih sederhana &
+            // aman daripada diff satu-satu, karena masih draft / stok belum jalan).
+            $purchase->items()->delete();
+            foreach ($validated['items'] as $item) {
+                $purchase->items()->create([
+                    'product_id' => $item['product_id'],
+                    'qty' => $item['qty'],
+                    'harga_satuan' => $item['harga_satuan'],
+                    'subtotal' => $item['qty'] * $item['harga_satuan'],
+                ]);
+            }
+        });
+
         $purchase->load(['supplier', 'items.product']);
 
         return response()->json(['data' => $purchase]);
@@ -105,13 +170,9 @@ class PurchaseController extends Controller
 
     /**
      * POST /api/purchases/{purchase}/approve
-     * Di sinilah stok BENAR-BENAR bertambah - qty_besar / qty_kecil sesuai
-     * satuan_dibeli tiap item, TANPA konversi (box & sachet dihitung terpisah,
-     * sama seperti catatan desain di migration purchase_items).
-     *
-     * TODO: kalau butuh audit trail per pergerakan stok, catat juga ke
-     * StockMovement di sini (satu baris per item) - belum diimplementasikan
-     * karena skema stock_movements belum dikonfirmasi.
+     * Stok bertambah di sini, sekaligus dicatat sebagai StockMovement
+     * (type=in) per item supaya ada jejak audit yang bisa ditelusuri di
+     * histori/laporan stok.
      *
      * Kalau jenis_pembayaran = kredit, sekaligus bikin baris SupplierDebt.
      */
@@ -125,14 +186,19 @@ class PurchaseController extends Controller
             foreach ($purchase->items as $item) {
                 $stock = Stock::firstOrCreate(
                     ['product_id' => $item->product_id],
-                    ['quantity' => 0, 'qty_besar' => 0, 'qty_kecil' => 0]
+                    ['quantity' => 0]
                 );
 
-                if ($item->satuan_dibeli === 'besar') {
-                    $stock->increment('qty_besar', $item->qty);
-                } else {
-                    $stock->increment('qty_kecil', $item->qty);
-                }
+                $stock->increment('quantity', $item->qty);
+
+                StockMovement::create([
+                    'product_id' => $item->product_id,
+                    'type' => StockMovement::TYPE_IN,
+                    'quantity' => $item->qty,
+                    'note' => 'Pembelian '.$purchase->no_pembelian,
+                    'reference_id' => $purchase->id,
+                    'created_by' => $request->user()->id,
+                ]);
             }
 
             $purchase->update([
@@ -175,12 +241,26 @@ class PurchaseController extends Controller
     /**
      * GET /api/purchases/{purchase}/pdf
      * TODO: generate PDF sungguhan (mis. pakai package barryvdh/laravel-dompdf).
-     * Untuk sekarang endpoint sudah tersedia tapi belum generate file asli,
-     * supaya Flutter tidak lagi kena 404 - selanjutnya tinggal isi logic di sini.
      */
     public function pdf(Purchase $purchase)
     {
         abort(501, 'Generate PDF bukti pembelian belum diimplementasikan.');
+    }
+
+    protected function validatePurchaseData(Request $request): array
+    {
+        return $request->validate([
+            'tanggal_pembelian' => 'required|date',
+            'supplier_id' => ['required', Rule::exists('suppliers', 'id')],
+            'jenis_pembayaran' => 'required|in:cash,transfer,kredit',
+            'jatuh_tempo' => 'nullable|date|required_if:jenis_pembayaran,kredit',
+            'catatan' => 'nullable|string',
+            'bukti_file' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
+            'items' => 'required|array|min:1',
+            'items.*.product_id' => ['required', Rule::exists('products', 'id')],
+            'items.*.qty' => 'required|integer|min:1',
+            'items.*.harga_satuan' => 'required|numeric|min:0',
+        ]);
     }
 
     protected function generateNoPembelian(): string

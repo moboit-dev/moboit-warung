@@ -14,20 +14,11 @@ class StockMovement extends Model
     public const TYPE_OUT = 'out';
     public const TYPE_ADJUSTMENT = 'adjustment';
 
-    /**
-     * Movement khusus saat 1 unit_besar "dibongkar" jadi beberapa
-     * unit_kecil karena stok unit_kecil sudah habis. Dicatat sebagai
-     * 2 baris terpisah (lihat StockService::sellKecilDenganAutoBreak):
-     * satu baris UNIT_BESAR (quantity negatif, box berkurang) dan satu
-     * baris UNIT_KECIL (quantity positif, sachet hasil bongkar).
-     */
-    public const TYPE_BREAK_UNIT = 'break_unit';
-
-    public const UNIT_BESAR = 'besar';
-    public const UNIT_KECIL = 'kecil';
-
+    // Catatan: satuan besar/kecil (UNIT_BESAR, UNIT_KECIL) dan
+    // TYPE_BREAK_UNIT sudah dihapus - produk sekarang selalu single-unit,
+    // jadi tidak ada lagi konsep "bongkar" box -> sachet.
     protected $fillable = [
-        'tenant_id', 'product_id', 'type', 'unit', 'quantity',
+        'tenant_id', 'product_id', 'type', 'quantity',
         'note', 'reference_id', 'created_by',
     ];
 
